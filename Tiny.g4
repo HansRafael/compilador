@@ -4,15 +4,27 @@ grammar Tiny;
 
 @parser::header
 {if 1:
+    counterIf = -1
+    countElse = -1
+    valueElse = False
+    countFor = -1
+    beginFor = 'BEGIN_FOR_'
+    endFor = 'END_FOR_'
+
     symbol_table = []
     usedVars = []
-    stackMax = 10
+    stackMax = 0
     stackCur = 0
 
+    def plusCount(value):
+        global countFor
+        countFor += 1
     def emit(bytecode, delta):
-        print('    ' + bytecode)
+        global stackMax
+        global stackCur
+        print(bytecode)
         stackCur += delta
-        if stackCur > stackMax:
+        if (stackCur > stackMax):
             stackMax = stackCur
         #imprimir bytecode
         #atualizar 
@@ -35,11 +47,24 @@ OP_CUR: '{' ;
 CL_CUR: '}' ;
 ATTRIB: '=' ;
 
+EQ:     '==';
+NE:     '!=';
+LT:      '<';
+LE:     '<=';
+GT:      '>';
+GE:     '>=';
+
 PRINTLN:   'println'; 
 FUNC:   'func'      ;
 PACKAGE:   'package';
 VAR:   'var'        ;
 READ_INT: 'read_int';
+
+FOR:  'for'         ;
+IF: 'if';
+ELSE: 'else';
+
+
 MAIN:   'main'      ;
 
 NUMBER: '0'..'9'+ ;
@@ -92,13 +117,13 @@ main:
     ;
 
 statement:
-    st_print | st_decl | st_attrib
+    st_print | st_decl | st_attrib | st_for | st_if 
     ;
 
 st_print:
     PRINTLN OP_PAR 
     {if 1:
-        print('    getstatic java/lang/System/out Ljava/io/PrintStream;')
+        emit('    getstatic java/lang/System/out Ljava/io/PrintStream;', 1)
         #+1 na pilha
     }
     
@@ -106,7 +131,7 @@ st_print:
 
     {if 1:
     #-2 na pilha
-    print('    invokevirtual java/io/PrintStream/println(I)V\n')
+        emit('    invokevirtual java/io/PrintStream/println(I)V\n', -2)
     }
     
     CL_PAR
@@ -130,8 +155,84 @@ st_decl:
     {if 1:
         index = symbol_table.index($NAME.text)
         usedVars.append(False)
-        print('    istore ' + str(index))
+        store = '    istore ' + str(index) 
+        emit(store, -1)
         #istore ==> -1 na pilha
+    }
+    ;
+
+st_for:
+    {if 1:
+        localCount = countFor
+        plusCount(countFor)
+        localCount += 1
+        print(beginFor + str(localCount) + ':')
+    }
+    FOR op = comparison
+    {if 1:
+        emit('    ' + $op.bytecode + ' ' + endFor + str(localCount),-2)
+    }
+    OP_CUR (statement )* CL_CUR
+    {if 1:
+        emit('    goto   ' + beginFor + str(localCount), 0)
+        print(endFor + str(localCount) + ':')
+    }
+    ;
+
+st_if:
+    IF op = comparison
+    {if 1:
+        global valueElse
+        global counterIf
+        counterIf += 1
+        localCount = counterIf
+        hasElse = False
+        emit('    ' + $op.bytecode + ' NOT_IF_' + str(localCount),-2)
+
+    }
+
+    OP_CUR (statement)* CL_CUR
+
+    ( 
+    {if 1:
+        hasElse = True
+        emit('    goto END_ELSE_' + str(localCount),0)
+        print('NOT_IF_' + str(localCount) + ':')
+    }
+
+    ELSE OP_CUR (statement)* CL_CUR
+
+    
+
+    )?
+
+    {if 1:
+        if(hasElse):
+            emit('END_ELSE_' + str(localCount) + ':',0)
+        else:
+            print('NOT_IF_' + str(localCount) + ':')
+    }
+
+;
+
+
+comparison returns [bytecode]:
+    expression op = ( EQ | NE | LT | LE | GT | GE) expression
+    {if 1:
+
+        if $op.type == TinyParser.EQ:
+            $bytecode = 'if_icmpne'         #faz uma comparacao entre dois valores interios na pilha
+        elif $op.type == TinyParser.NE:
+            $bytecode = 'if_icmpeq'
+        elif $op.type == TinyParser.LT:
+            $bytecode = 'if_icmpge'
+        elif $op.type == TinyParser.LE:
+            $bytecode = 'if_icmpgt'     #fazer o inverso
+        elif $op.type == TinyParser.GT:
+            $bytecode = 'if_icmple'
+        elif $op.type == TinyParser.GE:
+            $bytecode = 'if_icmplt'
+    
     }
     ;
 
@@ -147,7 +248,8 @@ st_attrib: //atribui a uma variavel
     ATTRIB expression
     {if 1:
         index = symbol_table.index($NAME.text)
-        print('    istore ' + str(index))
+        store = '    istore ' + str(index) 
+        emit(store, -1)
     }
     ;
 
@@ -155,13 +257,14 @@ st_attrib: //atribui a uma variavel
 /* ()* ->> valor repete     0 ou mais vezes */
 /* ()+ ->> valor repete     1 ou mais vezes */
 /* dessa maneira, faz o agrupamento a esquerda primeiro  (associatividade)*/
+
 expression: /*guarda a variavel OP  */
     term ( op = (PLUS | MINUS) term
     {if 1:
         if $op.type == TinyParser.PLUS:
-            print('    iadd')
+            emit('    iadd', -1)
         if $op.type == TinyParser.MINUS:
-            print('    isub')
+            emit('    isub', -1)
     }
     )*
     ;
@@ -170,19 +273,21 @@ term: factor ( op = (TIMES | OVER | REM) factor
     {if 1:
         #lcd,imul,idiv,irem ==> -1 na pilha
         if $op.type == TinyParser.TIMES:
-            print('    imul')
+            emit('    imul', -1)
         if $op.type == TinyParser.OVER:
-            print('    idiv')
+            emit('    idiv', -1)
         if $op.type == TinyParser.REM:
-            print('    irem')
+            emit('    irem', -1)
+            
     }
     )*
     ;
 
 factor: NUMBER
     {if 1:
-        #  emit('ldc ' + $NUMBER.text, +1)
-        print('    ldc ' + $NUMBER.text)
+        #  emit('ldc ' + $NUMBER.text, 1)
+        store = '    ldc ' + $NUMBER.text
+        emit(store, 1)
         # symbol_table.append($NUMBER.text)
     }
     | OP_PAR expression CL_PAR
@@ -192,7 +297,7 @@ factor: NUMBER
         if $NAME.text in symbol_table:
             index = symbol_table.index($NAME.text)
             usedVars[index] = True
-            print('    iload ' + str(index))
+            emit('    iload ' + str(index), 1)
         #iload +1 ==> na piha aumenta, visto que carrega o valor 
         #se nao existe, gera erro e para
         else:
@@ -202,9 +307,11 @@ factor: NUMBER
 
     | READ_INT OP_PAR CL_PAR
     {if 1:
-        print('    invokestatic Runtime/readInt()I')
+        emit('    invokestatic Runtime/readInt()I', 1)
         #+1 na pilha
         #comando da biblioteca Runtime.java
     }
 
     ;
+
+
