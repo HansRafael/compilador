@@ -12,8 +12,7 @@ func main () {
         } else {
             println(c)
         }
-    } 
-    else {
+    } else {
         if a > b {
             println(b)
         } else {

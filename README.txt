@@ -1,3 +1,35 @@
+Criação de um compilador simples, que realiza as seguintes tarefas:
+* com controle da stack
+* Atribuição de variáveis (apenas inteiros e string)
+* println
+* função
+* comentários
+* detecção de erros
+    -> variáveis redeclaradas
+    -> variáveis não declaradas
+    -> variáveis declaradas mas não utilizadas
+    -> tipo da variável: se for String, não tem como atribuir um Int
+    -> (10 * "w") => erro, apenas operandos inteiros
+    -> função não declaradas
+    -> sem return da função
+    -> main com return
+* Laços/repetições
+    -> if
+    -> else
+    -> for
+* operações sobre inteiros
+    -> +
+    -> -
+    -> *
+    -> /
+    -> %
+* comparações
+    -> ==
+    -> !=
+    -> <
+    -> <=
+    -> >
+    -> >=
 ------------------------------------------------OLD-----------------------------------------------------
 Build compiler:
 
@@ -20,9 +52,8 @@ python3 compiler.py Test.go Test.j
 java -jar jasmin-2.4.jar Test.j
 java Test
 
-------------------------------------------------OLD-----------------------------------------------------
 
-------------------------------------------------NEW-----------------------------------------------------
+
 Foi criado um script para realizar as tarefas. 
 Primeiro, é necessário rodar
 
@@ -34,3 +65,12 @@ Depois, para rodar algum teste, basta dar o seguinte comando:
 ./run <nome_do_arquivo.go>
 
 Ele irá gerar o arquivo Test.j para a VM do Java (com o jasmin-2.4)
+
+------------------------------------------------OLD-----------------------------------------------------
+
+------------------------------------------------NEW-----------------------------------------------------
+./test_all.sh   => testa todos os arquivos do dir allTestes
+
+./error_all.sh  => Detecção de alguns erros ()
+
+

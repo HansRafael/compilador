@@ -5,11 +5,6 @@ package main
 func main () {
     var x = 77
     var y = 88
-    var a = 2
-    if a < 3 {
-        a = 101
-    }
-    println(a)
     if x == y {
         println(1)
     }
